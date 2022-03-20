@@ -2,22 +2,25 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
+const novel_upload = require('./novel_upload');
 
-const { User, Novel } = require('../models'); 
+const { User, Novel, Chapter, Owned_contents, sequelize} = require('../models'); 
 
 // test page
 router.get('/test', async (req, res, next) => {
-    res.sendFile(path.join(__dirname, '../../client/myapp/public/index.html'));
+    const val = req.body;
+    console.log(val);
+    res.send(val);
 });
 
-// 1 - 요약정보 응답하기
-router.get('/novel/info/:novelId', async (req, res, next) => {
-    const novelId = req.params.novelId;
-    console.log(`here, novelID : ${novelId}`);
+//소설 요약정보 응답하기
+router.get('/info/novel/:novelID', async (req, res, next) => {
+    const novelID = req.params.novelID;
+    console.log(`here, novelID : ${novelID}`);
     try {
-        const novelInfo = await Novel.findAll({
+        const novelInfo = await Novel.findOne({
             where : {
-                novelId : novelId,
+                novelID : novelID,
             }
         });
 
@@ -27,6 +30,75 @@ router.get('/novel/info/:novelId', async (req, res, next) => {
         console.log(err);
     }
 });
+
+// 직접 쓴 소설 가져오기
+router.get('/written/novel', async (req, res, next) => {
+    // 임시로 유저아이디는 req.body에서 가져옴.
+    const userId = req.body.userId;
+    try {
+        const writtenNovels = await Novel.findAll({
+            attributes: ['novelTitle', 'novelDescription', 'novelGenre', 'novelID'],
+            where : {
+                User_userID : userId,
+            }
+        });
+
+        res.send({
+            "novels" : writtenNovels
+        });
+       
+    } catch(err) {
+        console.log(err);
+    }
+});
+
+// 구매한 소설 가져오기
+router.get('/purchased/novel', async (req, res, next) => {
+    // 임시로 유저아이디는 req.body에서 가져옴.
+    const userId = req.body.userId;
+    try {
+        //sequelize 방식이 복잡하여 일단 raw query 사용
+        const query = `
+        select distinct novelTitle, novelDescription, novelGenre, owned_contents.novelID
+        from novel, owned_contents
+        where owned_contents.novelID = novel.novelID 
+        and owned_contents.User_userID = "${userId}"
+        and own = 0;
+        `;
+
+        const result = await sequelize.query(query, {
+            type: sequelize.QueryTypes.SELECT
+        });
+        res.send({
+            "novels" : result
+        });
+       
+    } catch(err) {
+        console.log(err);
+    }
+});
+
+// 직접 쓴 소설 가져오기
+router.get('/written/novel', async (req, res, next) => {
+    // 임시로 유저아이디는 req.body에서 가져옴.
+    const userId = req.body.userId;
+    try {
+        const writtenNovels = await Novel.findAll({
+            attributes: ['novelTitle', 'novelDescription', 'novelGenre', 'novelID'],
+            where : {
+                User_userID : userId,
+            }
+        });
+
+        res.send({
+            "novels" : writtenNovels
+        });
+       
+    } catch(err) {
+        console.log(err);
+    }
+});
+
 
 
 module.exports = router;
